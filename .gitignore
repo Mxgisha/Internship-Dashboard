@@ -1,0 +1,11 @@
+# data + artifacts — never commit these
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/listings_raw.json
+data/snapshot.json
+letters/
+logs/
+__pycache__/
+*.pyc
+.chromium/
