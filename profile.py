@@ -1,48 +1,20 @@
-"""Everything the matcher needs to know about what Peter is looking for.
+"""The matcher's vocabulary and the user's configuration.
 
-Edit this file, not the code. Keywords are scored by substring match against the
-job title and category, case-insensitive.
+Non-personal taxonomy lives here: US states, country words, city aliases.
+Everything that describes the person or their preferences — weights, seasons,
+company notes, evidence gaps, biography — lives in `config.toml`, loaded once
+at import. Edit the config, not this file.
+
+The loader raises `config.ConfigError` if the file is missing or malformed; the
+entry points turn that into a one-line message instead of a traceback.
 """
+import config
 
-# Which posting seasons count. Ordered by preference.
-SEASONS = {
-    "Summer 2027": 25,
-    "Winter 2027": 10,
-    "Fall 2026": 8,
-}
+# ---------------------------------------------------------------------------
+# Location vocabulary. This is the same for every user.
+# ---------------------------------------------------------------------------
 
-# Category weights (Simplify's own taxonomy).
-CATEGORIES = {
-    "Hardware": 20,
-    "AI/ML/Data": 18,
-    "Software": 15,
-    "Quant": 12,
-    "Software Engineering": 12,
-    "Data Science, AI & Machine Learning": 15,
-    "Quantitative Finance": 12,
-    "Product": 6,
-}
-
-# Strong signal in the title -> big boost. These are the things he can defend.
-TITLE_KEYWORDS = {
-    "fpga": 18, "asic": 18, "rtl": 18, "verilog": 18, "soc": 14,
-    "embedded": 16, "firmware": 16, "electronics": 14, "analog": 14,
-    "rf ": 14, "dsp": 14, "signal processing": 14, "circuit": 14,
-    "hardware": 12, "electrical": 12, "validation": 8, "silicon": 14,
-    "machine learning": 14, "ml ": 10, "research": 10, "simulation": 12,
-    "scientific": 12, "computational": 12, "linux": 10, "cuda": 12,
-    "physics": 10, "data": 6, "software": 6, "systems": 6,
-}
-
-# Negative signal. Any hit is subtracted and shown to the reader.
-TITLE_PENALTIES = {
-    "phd": 25, "doctoral": 25, "mba": 25, "senior": 15, "principal": 15,
-    "sales": 20, "marketing": 20, "recruiting": 20, "hr ": 15,
-    "unpaid": 30,
-}
-
-# Where he can actually work. Everything else is flagged, not hidden.
-PREFERRED_LOCATIONS = ["medford", "boston", "cambridge", "somerville", "remote"]
+# US state and territory codes, used only in a "City, XX" position.
 US_STATES = {
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
     "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
@@ -50,71 +22,106 @@ US_STATES = {
     "VA","WA","WV","WI","WY","DC","PR",
 }
 
-# If any of these words appear, the posting is definitely not US-based.
+# Full state names are unambiguous in this feed and must be checked before
+# country words: "New Mexico" contains "Mexico", "Indiana" contains "India".
+US_STATE_NAMES = (
+    "alabama","alaska","arizona","arkansas","california","colorado","connecticut",
+    "delaware","florida","georgia","hawaii","idaho","illinois","indiana","iowa",
+    "kansas","kentucky","louisiana","maine","maryland","massachusetts","michigan",
+    "minnesota","mississippi","missouri","montana","nebraska","nevada",
+    "new hampshire","new jersey","new mexico","new york","north carolina",
+    "north dakota","ohio","oklahoma","oregon","pennsylvania","rhode island",
+    "south carolina","south dakota","tennessee","texas","utah","vermont",
+    "virginia","washington","west virginia","wisconsin","wyoming",
+    "district of columbia","puerto rico",
+)
+
+# If any of these appear as whole words, the posting is not US-based.
 NON_US_WORDS = {
-    "canada","united kingdom","germany","france","india","singapore","australia",
-    "china","japan","israel","ireland","netherlands","switzerland","brazil",
-    "mexico","poland","romania","spain","sweden","taiwan","korea","hong kong",
-    "belgium","denmark","norway","finland","portugal","italy","austria","czech",
-    "hungary","turkey","south africa","nigeria","kenya","russia","ukraine",
-    "vietnam","philippines","indonesia","malaysia","thailand","uae","dubai",
-    "qatar","saudi","colombia","argentina","chile","peru","egypt","morocco",
-    "pakistan","bangladesh","sri lanka","new zealand","luxembourg","estonia",
-    "lithuania","latvia","bulgaria","croatia","serbia","slovakia","slovenia",
-    "greece","iceland","monaco","cayman","bermuda",
+    "canada","united kingdom","uk","england","scotland","wales","northern ireland",
+    "ireland","germany","france","india","singapore","australia","china","japan",
+    "israel","netherlands","switzerland","brazil","mexico","poland","romania",
+    "spain","sweden","taiwan","korea","hong kong","belgium","denmark","norway",
+    "finland","portugal","italy","austria","czech","hungary","turkey",
+    "south africa","nigeria","kenya","russia","ukraine","vietnam","philippines",
+    "indonesia","malaysia","thailand","uae","dubai","qatar","saudi","colombia",
+    "argentina","chile","peru","egypt","morocco","pakistan","bangladesh",
+    "sri lanka","new zealand","luxembourg","estonia","lithuania","latvia",
+    "bulgaria","croatia","serbia","slovakia","slovenia","greece","iceland",
+    "monaco","cayman","bermuda",
+    "ontario","quebec","british columbia","alberta","manitoba","saskatchewan",
+    "nova scotia","new brunswick","newfoundland",
+    "europe","emea","apac","latam","middle east","asia","africa",
 }
+
+# Canadian province codes, again only after a comma. Kept separate from
+# NON_US_WORDS so a "City, XX" code can be read in context.
+CANADIAN_PROVINCES = {"ON","BC","QC","AB","MB","SK","NS","NB","NL","PE","YT","NT","NU"}
 
 # Bare city shorthand that means a US location without a state code.
-US_CITY_WORDS = {"sf", "nyc", "usa", "u.s.", "bay area", "silicon valley"}
-
-# Degree filter: he's a BS. Postings requiring only Master's/PhD are downranked.
-ACCEPTED_DEGREES = ["bachelor's", "bachelors"]
-
-# Only show jobs scoring at or above this.
-MIN_FIT = 70
-
-# Cap how many jobs land in the database per run, highest fit first.
-MAX_JOBS = 400
-
-# Short profiles for companies he already knows he wants to work at.
-# Everything else gets an auto-generated stub he can edit in the UI.
-COMPANY_PROFILES = {
-    "Analog Devices": "Analog/mixed-signal semiconductor company (Wilmington, MA). Makes data converters, amplifiers, RF and power ICs. Strong Tufts recruiting presence, large Boston-area intern class. Best fit for his EE core: analog, RF, DSP, embedded.",
-    "Arm": "UK semiconductor IP company (Cambridge, UK; Austin and San Jose in the US). Licenses CPU/GPU core designs to chipmakers. Known for low-level software, driver and emulation work. He already spoke with an Arm engineer about USB device modelling in Linux.",
-    "MathWorks": "Makes MATLAB and Simulink (Natick, MA). Engineering Development Group interns build and test the simulation tooling itself. Direct overlap with his dynamical-systems simulation work.",
-    "Raytheon": "Defense contractor (RTX). Missile systems, radar, RF. **ITAR: most internships require US person status.** Verify eligibility before applying.",
-    "Texas Instruments": "Analog and embedded semiconductor company. Strong internship pipeline, deep analog/RF/embedded work.",
-    "NVIDIA": "GPUs and accelerated computing. Relevant for CUDA, simulation acceleration and ML systems work.",
-    "Qualcomm": "Wireless and mobile SoCs. Modem, RF and DSP heavy.",
-    "Apple": "Consumer hardware with silicon, embedded firmware and systems teams. Hard to get into but values exactly this profile.",
-    "Boston Dynamics": "Robotics (Waltham, MA). Controls, embedded systems, simulation.",
-    "Draper": "Nonprofit R&D lab (Cambridge, MA). Hardware, sensing, autonomy. Often requires US person status.",
-    "MIT Lincoln Laboratory": "Federally funded R&D lab (Lexington, MA). Radar, signal processing, embedded. **Requires US citizenship.**",
-    "West Monroe": "Technology and management consulting (Chicago/NY). He already wrote an AI-concentration software engineering application.",
-    "Formlabs": "3D printing hardware (Somerville, MA). Embedded, firmware, mechanical/electrical.",
-    "iRobot": "Consumer robotics (Bedford, MA). Embedded and hardware test.",
+US_CITY_WORDS = {
+    "sf","nyc","la","boston","cambridge","somerville","medford","waltham",
+    "lexington","bedford","natick","burlington","bay area","silicon valley",
+    "san francisco","los angeles","san jose","santa clara","sunnyvale",
+    "mountain view","palo alto","menlo park","redwood city","seattle","redmond",
+    "bellevue","austin","denver","chicago","atlanta","new york","philadelphia",
+    "pittsburgh","houston","dallas","raleigh","durham","ann arbor","madison",
+    "minneapolis","salt lake city","portland","miami","orlando","san diego",
+    "irvine","indianapolis","remote",
 }
 
+# Words that mean the US when no country/province word is present. "US" and
+# "U.S." are normalised to "us" before matching.
+US_COUNTRY_WORDS = ("united states","united states of america","usa","us")
+
 # ---------------------------------------------------------------------------
-# Evidence gaps. The matcher scores keywords; these flags say where you would
-# have to defend something you cannot currently prove.
+# User configuration. Loaded once; see config.example.toml for every key.
 # ---------------------------------------------------------------------------
-GAP_WARNINGS = {
-    "asic": "RTL/ASIC role. Expects a Verilog project you can show — you have none on file.",
-    "rtl": "RTL role. Expects a Verilog/SystemVerilog project — none on file.",
-    "verilog": "Expects Verilog evidence — this is the weakest claim in your packet.",
-    "fpga": "Expects an FPGA project — none on file. This is the Track B blocker.",
-    "dft": "DFT/scan-test work expects digital design coursework beyond what is on the resume.",
-    "physical design": "Physical design expects layout/EDA tool experience you have not claimed.",
-    "analog": "Analog role. Expects the analog circuit sequence plus lab bench work — confirm.",
-    "mixed-signal": "Mixed-signal expects SPICE and layout experience — confirm.",
-    "circuit": "Circuit design role. Confirm you have the analog/digital coursework to defend it.",
-    "spice": "Expects SPICE simulation experience — not on file.",
-    "rf": "RF role. Expects microwave/EM coursework and bench experience — confirm.",
-    "mechanical": "Mechanical-adjacent. Outside your evidence base.",
-    "thermal": "Thermal/packaging work. Outside your evidence base.",
-    "phd": "Requires a PhD. Probably out of scope.",
-    "clearance": "Requires security clearance or US person status. Verify eligibility first.",
-    "itar": "ITAR-restricted. Requires US person status. Verify eligibility first.",
-    "sales": "Sales-adjacent role. Low overlap with your evidence.",
-}
+_CFG = config.load()
+_SCORING = _CFG["scoring"]
+
+SEASONS = {str(k): int(v) for k, v in _SCORING["seasons"].items()}
+CATEGORIES = {str(k): int(v) for k, v in _SCORING["categories"].items()}
+TITLE_KEYWORDS = {str(k): int(v) for k, v in _SCORING["title_keywords"].items()}
+TITLE_PENALTIES = {str(k): int(v) for k, v in _SCORING["title_penalties"].items()}
+ACCEPTED_DEGREES = [d.lower() for d in _SCORING.get("accepted_degrees", [])]
+MIN_FIT = int(_SCORING["min_fit"])
+MAX_JOBS = int(_SCORING["max_jobs"])
+PREFERRED_LOCATIONS = [str(place) for place in
+                       _CFG.get("locations", {}).get("preferred", [])]
+
+IDENTITY = dict(_CFG["identity"])
+LETTER_TEXT = dict(_CFG["letters"])
+
+_COMPANIES = _CFG.get("companies", {})
+COMPANY_PROFILES = {}
+COMPANY_ALIASES = {}
+for _name, _entry in _COMPANIES.items():
+    if isinstance(_entry, str):
+        COMPANY_PROFILES[_name] = _entry
+        continue
+    COMPANY_PROFILES[_name] = _entry.get("summary", "")
+    for _alias in _entry.get("aliases", []):
+        COMPANY_ALIASES[_alias] = _name
+
+GAP_WARNINGS = dict(_CFG.get("gaps", {}))
+
+
+def canonical_company(company):
+    """Resolve a feed name through COMPANY_ALIASES, case-insensitively."""
+    name = (company or "").strip()
+    for alias, target in COMPANY_ALIASES.items():
+        if name.casefold() == alias.casefold():
+            return target
+    return name
+
+
+def company_summary(company, active_roles):
+    """Curated note when one exists, otherwise an honest, editable stub."""
+    known = COMPANY_PROFILES.get(canonical_company(company)) or COMPANY_PROFILES.get(company)
+    if known:
+        return known
+    roles = (f"{active_roles} active role(s) in this feed." if active_roles
+             else "No active roles in this feed.")
+    return (f"No profile on file for {company}. {roles} "
+            f"Edit the company summary on the job page.")

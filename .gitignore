@@ -9,3 +9,7 @@ logs/
 __pycache__/
 *.pyc
 .chromium/
+BRIEF.html
+
+# personal configuration
+config.toml

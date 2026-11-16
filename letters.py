@@ -1,60 +1,26 @@
 """Generate cover-letter drafts from verified facts + the listing.
 
 Deliberately refuses to invent the "why this company" paragraph. That sentence
-has to come from him, so it is emitted as a marked placeholder.
+has to come from you, so it is emitted as a marked placeholder.
 
 Usage:
     python3 letters.py <job_id>          # write all variants for one job
     python3 letters.py --top 5           # write all variants for the 5 best jobs
 """
-import json
 import os
 import re
 import sys
 import time
 
+import config
 import db
 
+try:
+    import profile as P
+except config.ConfigError as exc:  # a missing config should read as advice, not a traceback
+    raise SystemExit(f"jobhunt: {exc}")
+
 HERE = os.path.dirname(os.path.abspath(__file__))
-
-# ---- Verified facts only. Do not add claims the repo cannot back. ----
-FACTS = {
-    "school": "Tufts University",
-    "degree": "electrical engineering",
-    "year": "sophomore",
-    "gpa": "3.71",
-}
-
-RESEARCH = (
-    "Over the summer I built a tested Python package for training and evaluating neural "
-    "emulators of the Lorenz-63 chaotic system — about 6,700 lines, 106 tests, and eight "
-    "diagnostics including Lyapunov spectra and correlation dimension. The part I am proudest "
-    "of is unglamorous: I derived backpropagation by hand through a four-stage Runge-Kutta "
-    "integrator and checked it against finite differences to 1e-10, because I did not want to "
-    "trust a number I could not reproduce."
-)
-
-BUILDING = (
-    "I also ship. I built an Android reader that reflows arXiv papers for phone screens — "
-    "React Native and TypeScript, about 4,000 lines — where the interesting problem was "
-    "restoring your reading position on a page whose height changes after it loads. I ended up "
-    "storing a position and an anchor and re-applying the restore until the layout settled."
-)
-
-COMMUNICATING = (
-    "I spend a lot of my time explaining technical things. I am a learning assistant for "
-    "Physics 12 (electromagnetics), where I run small-group sessions and help redesign "
-    "assessment. As a Career Center ambassador I grew event reach to over 600,000 impressions "
-    "and advise students one-on-one on recruiting."
-)
-
-LIFE = (
-    "Between high school and college I worked as an artisanal carpenter in Fiji, digitized a "
-    "shipped library for students in Rwanda, and started a small bicycle business that I still "
-    "run. I have used Linux since I was a child."
-)
-
-SIGNOFF = "\nSincerely,\nPeter Wiehler\npeter.wiehler@tufts.edu | (929) 216-8804\n"
 
 
 def classify(job):
@@ -81,12 +47,13 @@ def build(job, variant):
     title = job["title"]
     style = classify(job)
 
+    text = P.LETTER_TEXT
     if variant == "technical":
-        body = RESEARCH + "\n\n" + BUILDING
+        body = text["research"] + "\n\n" + text["building"]
     elif variant == "builder":
-        body = BUILDING + "\n\n" + RESEARCH
+        body = text["building"] + "\n\n" + text["research"]
     else:
-        body = COMMUNICATING + "\n\n" + RESEARCH
+        body = text["communicating"] + "\n\n" + text["research"]
 
     if style == "hardware" and variant == "technical":
         closer = (
@@ -106,16 +73,19 @@ def build(job, variant):
             "compile, and that is the part of an internship I would want to spend the summer on."
         )
 
+    identity = P.IDENTITY
+    signoff = (f"\nSincerely,\n{identity['name']}\n"
+               f"{identity['email']} | {identity['phone']}\n")
     return (
         f"Dear {company} Hiring Team,\n\n"
-        f"I'm a {FACTS['year']} studying {FACTS['degree']} at {FACTS['school']}, and I'm "
-        f"applying for the {title} role.\n\n"
+        f"I'm a {identity['year']} studying {identity['degree']} at {identity['school']}, and "
+        f"I'm applying for the {title} role.\n\n"
         f"{hook_placeholder(job)}\n\n"
         f"{body}\n\n"
         f"{closer}\n\n"
         f"I'd welcome the chance to bring that to {company} this summer. Thank you for your "
         f"time and consideration.\n"
-        f"{SIGNOFF}"
+        f"{signoff}"
     )
 
 
@@ -137,7 +107,10 @@ def write_letters(con, job_id):
                ON CONFLICT(job_id, variant) DO UPDATE SET body=excluded.body, created=excluded.created""",
             (job_id, variant, text, int(time.time())),
         )
-        path = os.path.join(db.LETTERS, f"{safe_name(job['company'])}--{safe_name(job['title'])}--{variant}.md")
+        path = os.path.join(
+            db.LETTERS,
+            f"{safe_name(job['company'])}--{safe_name(job['title'])}--{variant}"
+            f"--{safe_name(str(job['id']))[:8]}.md")
         with open(path, "w") as fh:
             fh.write(f"# {job['company']} — {job['title']}\n\n"
                      f"Fit {job['fit']} · {job['category']} · {job['url']}\n\n---\n\n{text}")

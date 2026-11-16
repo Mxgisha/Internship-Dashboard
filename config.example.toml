@@ -1,0 +1,101 @@
+# jobhunt configuration.
+# Copy this file to config.toml and edit the identity, letters, and companies.
+# config.toml is gitignored; this example is the documented default.
+
+[scoring]
+min_fit = 70
+max_jobs = 400
+accepted_degrees = ["bachelor's", "bachelors"]
+
+# Posting seasons that count, and their weight. An unmatched season is -15.
+[scoring.seasons]
+"Summer 2027" = 25
+"Winter 2027" = 10
+"Fall 2026" = 8
+
+# Simplify category weights.
+[scoring.categories]
+"Hardware" = 20
+"AI/ML/Data" = 18
+"Software" = 15
+"Quant" = 12
+"Software Engineering" = 12
+"Data Science, AI & Machine Learning" = 15
+"Quantitative Finance" = 12
+"Product" = 6
+
+# Substring hits in the title. Keep the trailing spaces in "rf ", "ml ", "hr ".
+[scoring.title_keywords]
+"fpga" = 12
+"asic" = 12
+"rtl" = 10
+"verilog" = 18
+"soc" = 14
+"embedded" = 12
+"firmware" = 12
+"electronics" = 14
+"analog" = 14
+"rf " = 14
+"dsp" = 14
+"signal processing" = 10
+"circuit" = 14
+"hardware" = 12
+"electrical" = 12
+"validation" = 8
+"silicon" = 14
+"machine learning" = 14
+"ml " = 10
+"research" = 10
+"simulation" = 12
+"scientific" = 12
+"computational" = 12
+"linux" = 16
+"cuda" = 12
+"physics" = 10
+"data" = 6
+"software" = 12
+"systems" = 6
+
+# Negative title signals.
+[scoring.title_penalties]
+"phd" = 25
+"doctoral" = 25
+"mba" = 25
+"senior" = 15
+"principal" = 15
+"sales" = 20
+"marketing" = 20
+"recruiting" = 20
+"hr " = 15
+"unpaid" = 30
+
+[locations]
+# Earns +8 on top of the +10 US bonus. A bare "remote" counts.
+preferred = ["medford", "boston", "cambridge", "somerville", "new york"]
+
+[identity]
+name = "Your Name"
+school = "Your University"
+degree = "electrical engineering"
+year = "sophomore"
+gpa = "0.00"
+email = "you@example.com"
+phone = "(000) 000-0000"
+
+[letters]
+# Three letter variants are assembled from these four verified facts.
+# Replace each with something you can defend in an interview.
+research = """The research project, the numbers, and what you learned."""
+building = """Something you shipped, and the hard part of building it."""
+communicating = """Teaching, advising, or writing you have done."""
+life = """The non-technical experience that shapes how you work."""
+
+# Optional company notes. The key is the display name; aliases are feed names.
+# [companies."Example Corp"]
+# aliases = ["ExampleCorp Inc"]
+# summary = "What the company does and why it fits."
+
+# Evidence gaps shown on the job page. Keys are matched against title + category.
+[gaps]
+asic = "RTL/ASIC role. Expects a Verilog project you can show."
+clearance = "Requires security clearance or US person status. Verify eligibility first."

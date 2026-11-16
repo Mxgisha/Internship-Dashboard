@@ -1,0 +1,91 @@
+# Test fixture. Deliberately not the user's config.
+# Weights are the original committed baseline, so tuning config.toml
+# never changes what the mechanics tests assert.
+[scoring]
+min_fit = 70
+max_jobs = 400
+accepted_degrees = ["bachelor's", "bachelors"]
+
+[scoring.seasons]
+"Summer 2027" = 25
+"Winter 2027" = 10
+"Fall 2026" = 8
+
+[scoring.categories]
+"Hardware" = 20
+"AI/ML/Data" = 18
+"Software" = 15
+"Quant" = 12
+"Software Engineering" = 12
+"Data Science, AI & Machine Learning" = 15
+"Quantitative Finance" = 12
+"Product" = 6
+
+[scoring.title_keywords]
+"fpga" = 18
+"asic" = 18
+"rtl" = 18
+"verilog" = 18
+"soc" = 14
+"embedded" = 16
+"firmware" = 16
+"electronics" = 14
+"analog" = 14
+"rf " = 14
+"dsp" = 14
+"signal processing" = 14
+"circuit" = 14
+"hardware" = 12
+"electrical" = 12
+"validation" = 8
+"silicon" = 14
+"machine learning" = 14
+"ml " = 10
+"research" = 10
+"simulation" = 12
+"scientific" = 12
+"computational" = 12
+"linux" = 10
+"cuda" = 12
+"physics" = 10
+"data" = 6
+"software" = 6
+"systems" = 6
+
+[scoring.title_penalties]
+"phd" = 25
+"doctoral" = 25
+"mba" = 25
+"senior" = 15
+"principal" = 15
+"sales" = 20
+"marketing" = 20
+"recruiting" = 20
+"hr " = 15
+"unpaid" = 30
+
+[locations]
+preferred = ["medford", "boston", "cambridge", "somerville", "remote"]
+
+[identity]
+name = "Test User"
+school = "Test University"
+degree = "electrical engineering"
+year = "sophomore"
+gpa = "3.00"
+email = "test@example.com"
+phone = "(000) 000-0000"
+
+[letters]
+research = "RESEARCH_FACT"
+building = "BUILDING_FACT"
+communicating = "COMMUNICATING_FACT"
+life = "LIFE_FACT"
+
+[companies."Raytheon"]
+aliases = ["RTX", "Raytheon Technologies"]
+summary = "Defense contractor fixture summary."
+
+[gaps]
+asic = "ASIC fixture gap."
+clearance = "Clearance fixture gap."
